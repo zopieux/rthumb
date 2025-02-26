@@ -1,0 +1,15 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = ["rthumbd"]
+resolver = "2"
+
+[workspace.lints]
+
+[workspace.dependencies]
+anyhow = { version = "1.0.96" }
+env_logger = { version = "0.11.6" }
+log = { version = "0.4.26" }
+serde = { version = "1.0.218" }

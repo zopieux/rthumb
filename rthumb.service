@@ -1,0 +1,13 @@
+[Unit]
+Description=Thumbnailing service
+
+[Service]
+Type=dbus
+BusName=org.freedesktop.thumbnails.Thumbnailer1
+ExecStart=rthumbd
+
+[Service]
+Environment=RUST_LOG=info
+Environment=RAYON_NUM_THREADS=6
+Environment=RTHUMB_CHUNK_SIZE=2
+ExecStart=/usr/bin/rthumbd
