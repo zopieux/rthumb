@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - providers
 
 jobs:
   build:

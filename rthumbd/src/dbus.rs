@@ -1,99 +1,13 @@
-use std::{
-    fmt,
-    path::{Path, PathBuf},
-    sync::atomic,
-};
+use std::sync::{atomic, Arc};
 
 use itertools::Itertools;
+use rthumb::{MediaRef, ProviderRegistry, ThumbFlavor, ThumbJobBatch};
 use tokio::sync::mpsc;
 use zbus::{
     fdo,
     object_server::SignalEmitter,
     zvariant::{self},
 };
-
-pub struct MediaRef {
-    pub uri: String,
-    pub mime_type: String,
-}
-
-pub struct ThumbJob {
-    pub handle: u32,
-    pub flavor: ThumbFlavor,
-    pub medias: Vec<MediaRef>,
-}
-
-impl fmt::Debug for ThumbJob {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ThumbJob")
-            .field("handle", &self.handle)
-            .field("flavor", &self.flavor)
-            .field("medias (len)", &self.medias.len())
-            .finish()
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ThumbFlavor {
-    Normal,
-    Large,
-    XLarge,
-    XXLarge,
-}
-
-impl ThumbFlavor {
-    pub fn all() -> impl Iterator<Item = ThumbFlavor> {
-        [
-            ThumbFlavor::Normal,
-            ThumbFlavor::Large,
-            ThumbFlavor::XLarge,
-            ThumbFlavor::XXLarge,
-        ]
-        .iter()
-        .copied()
-    }
-
-    pub fn dimension(&self) -> u32 {
-        match &self {
-            ThumbFlavor::Normal => 128,
-            ThumbFlavor::Large => 256,
-            ThumbFlavor::XLarge => 512,
-            ThumbFlavor::XXLarge => 1024,
-        }
-    }
-
-    pub fn cache_path(&self, cache_dir: &Path) -> PathBuf {
-        cache_dir.join(format!("{}", self))
-    }
-}
-
-impl TryFrom<&str> for ThumbFlavor {
-    type Error = std::io::ErrorKind;
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            "normal" => Ok(Self::Normal),
-            "large" => Ok(Self::Large),
-            "x-large" => Ok(Self::XLarge),
-            "xx-large" => Ok(Self::XXLarge),
-            _ => Err(std::io::ErrorKind::InvalidInput),
-        }
-    }
-}
-
-impl fmt::Display for ThumbFlavor {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                ThumbFlavor::Normal => "normal",
-                ThumbFlavor::Large => "large",
-                ThumbFlavor::XLarge => "x-large",
-                ThumbFlavor::XXLarge => "xx-large",
-            }
-        )
-    }
-}
 
 pub struct ThumbReply {
     pub handle: u32,
@@ -122,22 +36,25 @@ struct Supported {
 }
 
 pub struct Thumbnailer1 {
-    req_tx: mpsc::Sender<ThumbJob>,
+    registry: Arc<ProviderRegistry>,
+    req_tx: mpsc::Sender<ThumbJobBatch>,
     next_handle: atomic::AtomicU32,
 }
 
 impl Thumbnailer1 {
-    pub async fn create_and_listen()
-    -> anyhow::Result<(mpsc::Receiver<ThumbJob>, mpsc::Sender<Reply>)> {
+    pub async fn create_and_listen(
+        registry: Arc<ProviderRegistry>,
+    ) -> anyhow::Result<(mpsc::Receiver<ThumbJobBatch>, mpsc::Sender<Reply>)> {
         const WELL_KNOWN_NAME: &str = "org.freedesktop.thumbnails.Thumbnailer1";
         const INTERFACE_PATH: &str = "/org/freedesktop/thumbnails/Thumbnailer1";
 
         const CHANNEL_CAPACITY: usize = 256;
-        let (req_tx, mut req_rx) = mpsc::channel(CHANNEL_CAPACITY);
-        let (job_tx, job_rx) = mpsc::channel(CHANNEL_CAPACITY);
+        let (req_tx, mut req_rx) = mpsc::channel(2);
+        let (job_tx, job_rx) = mpsc::channel(2);
         let (result_tx, mut result_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
         let dbus_thumbnailer = Self {
+            registry: registry.clone(),
             req_tx,
             next_handle: atomic::AtomicU32::new(1),
         };
@@ -200,7 +117,7 @@ impl Thumbnailer1 {
             })
             .collect();
         self.req_tx
-            .send(ThumbJob {
+            .send(ThumbJobBatch {
                 handle,
                 flavor,
                 medias,
@@ -220,18 +137,15 @@ impl Thumbnailer1 {
     #[zbus(name = "GetSupported")]
     async fn get_supported(&self) -> fdo::Result<Supported> {
         let schemes = vec!["file".to_owned()];
-        let mime_types: Vec<_> = image::ImageFormat::all()
-            .map(|f| f.to_mime_type().to_owned())
-            .chain(
-                ["image/vnd.microsoft.icon"]
-                    .into_iter()
-                    .map(|s| s.to_owned()),
-            )
-            .dedup()
+        let mime_types: Vec<_> = self
+            .registry
+            .supported_mime_types()
+            .map(String::from)
             .collect();
-        let it = schemes.into_iter().cartesian_product(mime_types);
-        let schemes = it.clone().map(|(scheme, _)| scheme).collect();
-        let mime_types = it.map(|(_, mime_type)| mime_type).collect();
+        let (schemes, mime_types) = schemes
+            .into_iter()
+            .cartesian_product(mime_types)
+            .multiunzip();
         Ok(Supported {
             schemes,
             mime_types,

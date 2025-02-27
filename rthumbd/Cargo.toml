@@ -8,20 +8,21 @@ anyhow.workspace = true
 env_logger.workspace = true
 log.workspace = true
 serde.workspace = true
+itertools.workspace = true
+url.workspace = true
 
 zbus = { version = "5.5.0" }
-tokio = { version = "1.43.0", features = [
-    "macros",
-    "rt",
-    "sync",
-] }
-url = { version = "2.5.4" }
-md5 = "0.7.0"
-png = "0.17.16"
-itertools = "0.14.0"
-rayon = { version = "1.10.0" }
-image = { version = "0.25.5" }
+tokio = { version = "1.43.0", features = ["macros", "rt", "sync"] }
 sd-notify = { version = "0.4.5" }
+
+rthumb = { path = "../rthumb" }
+rthumb-image = { path = "../rthumb-image", optional = true }
+rthumb-video = { path = "../rthumb-video", optional = true }
 
 [lints]
 workspace = true
+
+[features]
+default = ["image"]
+image = ["dep:rthumb-image"]
+video = ["dep:rthumb-video"]
