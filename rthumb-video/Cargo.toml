@@ -1,0 +1,10 @@
+[package]
+name = "rthumb-video"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+rthumb = { path = "../rthumb" }
+
+[lints]
+workspace = true

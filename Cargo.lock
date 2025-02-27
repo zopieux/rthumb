@@ -1441,17 +1441,46 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57397d16646700483b67d2dd6511d79318f9d057fdbd21a4066aeac8b41d310a"
 
 [[package]]
+name = "rthumb"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "itertools 0.14.0",
+ "md5",
+ "png",
+ "rayon",
+ "serde",
+]
+
+[[package]]
+name = "rthumb-image"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "image",
+ "itertools 0.14.0",
+ "rthumb",
+ "url",
+]
+
+[[package]]
+name = "rthumb-video"
+version = "0.1.0"
+dependencies = [
+ "rthumb",
+]
+
+[[package]]
 name = "rthumbd"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "env_logger",
- "image",
  "itertools 0.14.0",
  "log",
- "md5",
- "png",
- "rayon",
+ "rthumb",
+ "rthumb-image",
+ "rthumb-video",
  "sd-notify",
  "serde",
  "tokio",

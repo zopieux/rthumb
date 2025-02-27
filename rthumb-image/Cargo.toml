@@ -1,0 +1,16 @@
+[package]
+name = "rthumb-image"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+itertools.workspace = true
+anyhow.workspace = true
+url.workspace = true
+
+rthumb = { path = "../rthumb" }
+
+image = { version = "0.25.5" }
+
+[lints]
+workspace = true

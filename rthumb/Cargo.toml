@@ -1,0 +1,16 @@
+[package]
+name = "rthumb"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+serde.workspace = true
+itertools.workspace = true
+
+rayon = "1.10.0"
+md5 = "0.7.0"
+png = "0.17.16"
+
+[lints]
+workspace = true

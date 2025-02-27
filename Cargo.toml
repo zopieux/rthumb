@@ -3,7 +3,7 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace]
-members = ["rthumbd"]
+members = ["rthumb", "rthumb-image", "rthumb-video", "rthumbd"]
 resolver = "2"
 
 [workspace.lints]
@@ -11,5 +11,7 @@ resolver = "2"
 [workspace.dependencies]
 anyhow = { version = "1.0.96" }
 env_logger = { version = "0.11.6" }
+itertools = { version = "0.14.0" }
 log = { version = "0.4.26" }
 serde = { version = "1.0.218" }
+url = { version = "2.5.4" }
