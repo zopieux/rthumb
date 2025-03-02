@@ -23,6 +23,6 @@ rthumb-video = { path = "../rthumb-video", optional = true }
 workspace = true
 
 [features]
-default = ["image"]
+default = ["image", "video"]
 image = ["dep:rthumb-image"]
 video = ["dep:rthumb-video"]

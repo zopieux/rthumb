@@ -4,7 +4,15 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+itertools.workspace = true
+anyhow.workspace = true
+log.workspace = true
+
 rthumb = { path = "../rthumb" }
+
+# ffmpegthumbnailer-rs = { path = "/home/alex/dev/ffmpegthumbnailer-rs", default-features = false }
+ffmpegthumbnailer-rs = { git = "https://github.com/zopieux/ffmpegthumbnailer-rs.git", branch = "not-div-2-fix", default-features = false }
+tokio = { version = "1.43.0", features = ["rt"] }
 
 [lints]
 workspace = true

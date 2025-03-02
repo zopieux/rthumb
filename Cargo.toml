@@ -11,6 +11,7 @@ resolver = "2"
 [workspace.dependencies]
 anyhow = { version = "1.0.96" }
 env_logger = { version = "0.11.6" }
+image = { version = "0.25.5" }
 itertools = { version = "0.14.0" }
 log = { version = "0.4.26" }
 serde = { version = "1.0.218" }

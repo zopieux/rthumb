@@ -113,8 +113,13 @@ impl fmt::Display for ThumbFlavor {
     }
 }
 
-pub type Successes = Vec<MediaRef>;
-pub type Failures = Vec<(MediaRef, String)>;
+pub struct ProviderOut {
+    pub source_width: u32,
+    pub source_height: u32,
+    pub width: u32,
+    pub height: u32,
+    pub data: Vec<u8>,
+}
 
 pub trait Provider: Send + Sync {
     // Returns some descriptive name for logging.
@@ -124,7 +129,7 @@ pub trait Provider: Send + Sync {
     fn supported_mime_types(&self) -> Vec<&'static str>;
 
     // Processes the singular job.
-    fn process(&self, opaque: usize, cache_dir: &Path, job: ThumbJob) -> anyhow::Result<()>;
+    fn process(&self, original_path: &Path, dimension: u32) -> anyhow::Result<ProviderOut>;
 }
 
 pub struct ProviderRegistry {
@@ -137,6 +142,40 @@ impl ProviderRegistry {
     fn get_provider(&self, mime_type: &str) -> Option<&(dyn Provider + 'static)> {
         let idx = self.mime_type_map.get(mime_type)?;
         Some(self.providers[*idx].as_ref())
+    }
+
+    fn process_one_media(
+        provider: &dyn Provider,
+        opaque: usize,
+        cache_dir: &Path,
+        job: ThumbJob,
+    ) -> anyhow::Result<()> {
+        let original_path = match url::Url::parse(&job.media.uri)?.to_file_path() {
+            Ok(path) => path,
+            Err(_) => return Err(anyhow!("not a file://")),
+        };
+        let cache_dir = job.flavor.cache_path(cache_dir);
+        let thumb_path = destination_filename(&cache_dir, &job.media.uri);
+        let original_meta = ThumbFsMeta::from(&job.media.uri, &original_path)?;
+        // Bail cheaply if already on disk & no changes.
+        if let Ok(existing_original_meta) = get_thumb_original_metadata(&thumb_path) {
+            if existing_original_meta == original_meta {
+                return Ok(());
+            }
+        }
+        let dimension = job.flavor.dimension();
+        let out = provider.process(original_path.as_path(), dimension)?;
+        let original_meta = ThumbFullMeta::from(original_meta, out.source_width, out.source_height);
+        let temp_thumb_path = temp_filename(&cache_dir, &job.media.uri, opaque);
+        write_thumb_with_original_metadata(
+            &temp_thumb_path,
+            &original_meta,
+            out.width,
+            out.height,
+            &out.data,
+        )?;
+        std::fs::rename(&temp_thumb_path, &thumb_path)?;
+        Ok(())
     }
 
     fn process_batch_sequentially(
@@ -160,7 +199,7 @@ impl ProviderRegistry {
                     handle,
                     media,
                 };
-                match provider.process(opaque, cache_dir, job) {
+                match Self::process_one_media(provider, opaque, cache_dir, job) {
                     Ok(_) => Either::Left(uri),
                     Err(err) => Either::Right((uri, format!("{}", err))),
                 }
@@ -363,7 +402,7 @@ pub fn get_thumb_original_metadata(path: &Path) -> anyhow::Result<ThumbFsMeta> {
         std::fs::OpenOptions::new()
             .read(true)
             .open(path)
-            .with_context(|| "open")?,
+            .context("png::Decoder/open")?,
     );
     let mut uri = None;
     let mut mtime_nsec = None;

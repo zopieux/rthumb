@@ -22,7 +22,8 @@ async fn main() -> anyhow::Result<()> {
         registry_builder,
         #[cfg(feature = "image")]
         rthumb_image::ImageProvider::new(),
-        // #[cfg(feature = "video")] VideoProvider::new(),
+        #[cfg(feature = "video")]
+        rthumb_video::VideoProvider::new(),
     );
     let registry = Arc::new(registry_builder.build());
 
@@ -71,7 +72,8 @@ async fn main() -> anyhow::Result<()> {
                 }
             }
         });
-        let h_process = tokio::task::spawn_blocking(move || registry.process_request(job, chunk_size, sync_tx));
+        let h_process =
+            tokio::task::spawn_blocking(move || registry.process_request(job, chunk_size, sync_tx));
         for h in [h_comms, h_process] {
             h.await?;
         }

@@ -49,8 +49,8 @@ impl Thumbnailer1 {
         const INTERFACE_PATH: &str = "/org/freedesktop/thumbnails/Thumbnailer1";
 
         const CHANNEL_CAPACITY: usize = 256;
-        let (req_tx, mut req_rx) = mpsc::channel(2);
-        let (job_tx, job_rx) = mpsc::channel(2);
+        let (req_tx, mut req_rx) = mpsc::channel(8);
+        let (job_tx, job_rx) = mpsc::channel(8);
         let (result_tx, mut result_rx) = mpsc::channel(CHANNEL_CAPACITY);
 
         let dbus_thumbnailer = Self {
@@ -136,7 +136,7 @@ impl Thumbnailer1 {
 
     #[zbus(name = "GetSupported")]
     async fn get_supported(&self) -> fdo::Result<Supported> {
-        let schemes = vec!["file".to_owned()];
+        let schemes: Vec<_> = vec!["file"].into_iter().map(String::from).collect();
         let mime_types: Vec<_> = self
             .registry
             .supported_mime_types()

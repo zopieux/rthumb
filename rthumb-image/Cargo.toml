@@ -6,11 +6,9 @@ edition.workspace = true
 [dependencies]
 itertools.workspace = true
 anyhow.workspace = true
-url.workspace = true
+image.workspace = true
 
 rthumb = { path = "../rthumb" }
-
-image = { version = "0.25.5" }
 
 [lints]
 workspace = true

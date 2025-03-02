@@ -14,21 +14,38 @@
         };
         rust = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-src" ];
-          # targets = [ "x86_64-unknown-linux-gnu" "wasm32-unknown-unknown" ];
         };
+        rustPlatform = pkgs.makeRustPlatform {
+          rustc = rust;
+          cargo = rust;
+        };
+        nativeBuildInputs = with pkgs;[
+          pkg-config
+          libiconv
+          llvmPackages.clang
+        ];
+        buildInputs = with pkgs; [
+          ffmpeg
+          glib
+        ];
+        LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
       in
       {
-        packages.default = pkgs.rustPlatform.buildRustPackage {
+        packages.default = rustPlatform.buildRustPackage {
           pname = "rthumb";
           version = "local";
           src = ./.;
+          inherit nativeBuildInputs buildInputs LIBCLANG_PATH;
           cargoLock.lockFile = ./Cargo.lock;
+          cargoLock.outputHashes = {
+            "ffmpegthumbnailer-rs-0.2.1" = "sha256-ciGTY/tEJQw8ZUfb8CDvxr2KaHvSs/JXuXL+FCC0r3s=";
+          };
         };
         devShell = pkgs.mkShell {
-          buildInputs = [
+          inherit nativeBuildInputs LIBCLANG_PATH;
+          buildInputs = buildInputs ++ [
             rust
             pkgs.cargo-edit
-            pkgs.extism-cli
           ];
         };
       }
